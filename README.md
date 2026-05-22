@@ -69,4 +69,4 @@ streamlit run app.py
 
 ## Equipo
 
-Desarrollado por **Enrique Calle** y **Cristhian Gallegos** — Nuclea Data Solutions
+Desarrollado por **Enrique Calle**, **Cristhian Gallegos** y **Kenny Pizarro** — Nuclea Data Solutions
