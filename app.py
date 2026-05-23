@@ -1,200 +1,140 @@
+ 
 import streamlit as st
-import re
 from agent import run_agent
 from database import init_db
 
+# Inicializar BD al arrancar
 init_db()
 
+# ── CONFIGURACION DE PAGINA ──────────────────────────────────────────────────
 st.set_page_config(
     page_title="Estimador de Copago",
     page_icon="🏥",
     layout="centered"
 )
 
-# ── ESTILOS ───────────────────────────────────────────────
+# ── ESTILOS ──────────────────────────────────────────────────────────────────
 st.markdown("""
-<style>
-
-.main {
-    background-color: #f7f9fc;
-}
-
-.header {
-    background: linear-gradient(90deg, #1a6fa8, #2c97de);
-    padding: 25px;
-    border-radius: 12px;
-    text-align: center;
-    color: white;
-    margin-bottom: 20px;
-}
-
-.card {
-    padding: 15px;
-    border-radius: 10px;
-    margin-bottom: 12px;
-    color: #1a1a1a;
-}
-
-.best {
-    background-color: #e8f8f0;
-    border-left: 6px solid #27ae60;
-}
-
-.mid {
-    background-color: #fff8e6;
-    border-left: 6px solid #f1c40f;
-}
-
-.worst {
-    background-color: #fdecea;
-    border-left: 6px solid #e74c3c;
-}
-
-.money {
-    color: #27ae60;
-    font-weight: bold;
-}
-
-.badge {
-    background-color: #27ae60;
-    color: white;
-    padding: 4px 8px;
-    border-radius: 6px;
-    font-size: 12px;
-}
-
-</style>
+    <style>
+        .header-box {
+            background-color: #1a6fa8;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .header-box h1 {
+            color: white;
+            font-size: 28px;
+            margin: 0;
+        }
+        .header-box p {
+            color: #d0e8f5;
+            margin: 6px 0 0;
+            font-size: 14px;
+        }
+        .info-box {
+            background-color: #eaf4fb;
+            border-left: 4px solid #1a6fa8;
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            color: #1a3a4a;
+        }
+    </style>
 """, unsafe_allow_html=True)
 
-# ── HEADER ───────────────────────────────────────────────
+# ── HEADER ───────────────────────────────────────────────────────────────────
 st.markdown("""
-<div class="header">
-    <h1>🏥 Estimador Inteligente de Copago</h1>
-    <p>Elige la mejor opción médica según tu seguro</p>
-</div>
+    <div class="header-box">
+        <h1>🏥 Estimador de Copago y Cobertura</h1>
+        <p>Consulta cuanto pagarias antes de atenderte en la red de hospitales</p>
+    </div>
 """, unsafe_allow_html=True)
 
-st.info("💡 Describe tu síntoma y te diremos cuánto pagarás y dónde te conviene atenderte.")
+st.markdown("""
+    <div class="info-box">
+        💡 <strong>Como funciona:</strong> Describe tu sintoma, ingresa tu cedula
+        y el agente te indicara la especialidad sugerida, el copago exacto
+        y los hospitales disponibles ordenados del mas economico al mas costoso.
+    </div>
+""", unsafe_allow_html=True)
 
-# ── SESSION ──────────────────────────────────────────────
+# ── CEDULAS DE PRUEBA ─────────────────────────────────────────────────────────
+with st.expander("📋 Cedulas de prueba disponibles"):
+    st.markdown("""
+    | Paciente | Cedula | Seguro | Nivel |
+    |---|---|---|---|
+    | Enrique Calle | 0932001001 | Saludsa | 3 - Plus (copago 20%) |
+    | Cristhian Gallegos | 0932001002 | Saludsa | 4 - Premium (copago 10%) |
+    | Kenny Pizarro | 0932001003 | Ecuasanitas | 2 - Estandar (copago 30%) |
+    """)
+
+# ── ESTADO DE SESION ─────────────────────────────────────────────────────────
 if "historial" not in st.session_state:
     st.session_state.historial = []
 
-if "mensajes" not in st.session_state:
-    st.session_state.mensajes = []
+if "mensajes_ui" not in st.session_state:
+    st.session_state.mensajes_ui = []
 
-if not st.session_state.mensajes:
-    st.session_state.mensajes.append({
+# Mensaje de bienvenida
+if not st.session_state.mensajes_ui:
+    st.session_state.mensajes_ui.append({
         "role": "assistant",
-        "content": "👋 Hola, soy tu asistente de salud. Cuéntame tu síntoma."
+        "content": "👋 Hola, soy tu asistente de salud. Describeme tu sintoma y te ayudo a conocer tu copago y los hospitales disponibles en tu red."
     })
 
-# ── FUNCION PRINCIPAL ────────────────────────────────────
-def render_respuesta(respuesta):
-
-    lines = respuesta.split("\n")
-
-    especialidad = ""
-    seguro = ""
-    hospitales = []
-
-    for line in lines:
-        if "Especialidad sugerida" in line:
-            especialidad = line
-        elif "Tu seguro" in line:
-            seguro = line
-        elif "-" in line and "Copago" in line:
-            hospitales.append(line)
-
-    st.markdown(f"### 🧠 {especialidad}")
-    st.markdown(f"### 🛡️ {seguro}")
-    st.markdown("### 🏥 Opciones disponibles")
-
-    # Extraer copagos numéricos
-    copagos = []
-    for h in hospitales:
-        match = re.search(r'\\$(\\d+\\.\\d{2})', h)
-        if match:
-            copagos.append(float(match.group(1)))
-
-    if not copagos:
-        return
-
-    max_copago = max(copagos)
-    min_copago = min(copagos)
-
-    for i, h in enumerate(hospitales):
-
-        copago_match = re.search(r'\\$(\\d+\\.\\d{2})', h)
-        copago = float(copago_match.group(1)) if copago_match else 0
-
-        ahorro = max_copago - copago
-        ahorro_pct = (ahorro / max_copago) * 100 if max_copago > 0 else 0
-
-        if i == 0:
-            clase = "best"
-            titulo = "🥇 Mejor opción"
-            recomendacion = f"""
-            <br><span class="badge">Ahorras {ahorro_pct:.0f}% (${ahorro:.2f}) vs la opción más cara</span>
-            <br>✔ Te conviene porque es el menor copago disponible en la red.
-            """
-        elif i == 1:
-            clase = "mid"
-            titulo = "👍 Alternativa"
-            recomendacion = f"""
-            <br>Ahorras {ahorro_pct:.0f}% comparado con la más cara.
-            """
-        else:
-            clase = "worst"
-            titulo = "💸 Más costoso"
-            recomendacion = "<br>❗ Es la opción con mayor copago."
-
-        # Colorear dinero
-        h_html = re.sub(
-            r'\\$(\\d+\\.\\d{2})',
-            r'<span class="money">$\1</span>',
-            h
-        )
-
-        st.markdown(f"""
-        <div class="card {clase}">
-            <strong>{titulo}</strong><br>
-            {h_html}
-            {recomendacion}
-        </div>
-        """, unsafe_allow_html=True)
-
-
-# ── CHAT ────────────────────────────────────────────────
-for msg in st.session_state.mensajes:
+# ── CHAT ─────────────────────────────────────────────────────────────────────
+for msg in st.session_state.mensajes_ui:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
-if prompt := st.chat_input("Escribe tu síntoma..."):
+# Input del usuario
+if prompt := st.chat_input("Escribe tu sintoma o responde al agente..."):
 
-    st.session_state.mensajes.append({"role": "user", "content": prompt})
-
+    # Mostrar mensaje del usuario
+    st.session_state.mensajes_ui.append({
+        "role": "user",
+        "content": prompt
+    })
     with st.chat_message("user"):
         st.markdown(prompt)
 
+    # Llamar al agente
+    
     with st.chat_message("assistant"):
-        with st.spinner("🧠 Analizando síntoma..."):
+        with st.spinner("Consultando..."):
             respuesta, st.session_state.historial = run_agent(
                 prompt,
                 st.session_state.historial
             )
-
+        # Limpiar backticks que Claude puede generar
+        import re
         respuesta_limpia = respuesta.replace("`", "")
-        render_respuesta(respuesta_limpia)
 
-        st.session_state.mensajes.append({
+        # Reemplazar saltos de linea para HTML
+        respuesta_html = respuesta_limpia.replace("\n", "<br>")
+
+        # Colorear todos los numeros decimales como dolares
+        respuesta_html = re.sub(
+            r'\$?(\d+\.\d{2})',
+            r'<span style="color:#27ae60;font-weight:bold;">$\1</span>',
+            respuesta_html
+        )
+
+        st.html(f"<div style='font-size:15px;line-height:1.8;'>{respuesta_html}</div>")
+
+        st.session_state.mensajes_ui.append({
             "role": "assistant",
-            "content": respuesta_limpia
+            "content": respuesta
         })
 
-# ── RESET ───────────────────────────────────────────────
+# ── BOTON LIMPIAR ─────────────────────────────────────────────────────────────
 st.divider()
-if st.button("🔄 Nueva consulta"):
-    st.session_state.historial = []
-    st.session_state.mensajes = []
-    st.rerun()
+col1, col2, col3 = st.columns([1, 2, 1])
+with col2:
+    if st.button("🔄 Nueva consulta", use_container_width=True):
+        st.session_state.historial = []
+        st.session_state.mensajes_ui = []
+        st.rerun()
