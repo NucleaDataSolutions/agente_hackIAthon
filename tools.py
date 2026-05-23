@@ -156,17 +156,33 @@ def calcular_copago(id_seguro: int, id_especialidad: int) -> dict:
     }
 
 # ── TOOL 5 ───────────────────────────────────────────────────────────────────
-def rankear_opciones(id_seguro: int, id_especialidad: int) -> list:
-    """Rankea todos los hospitales de la red por copago final ascendente."""
+def rankear_opciones(id_seguro: int | None, id_especialidad: int) -> list:
+
     hospitales = buscar_hospitales(id_especialidad)
 
+    resultado = []
+
+    if id_seguro is None:
+        # SIN SEGURO → paga todo
+        for h in hospitales:
+            resultado.append({
+                **h,
+                "porcentaje": 100,
+                "copago_paciente": h["precio_base"],
+                "cubre_seguro": 0,
+            })
+        return sorted(resultado, key=lambda x: x["copago_paciente"])
+
+    # CON SEGURO (tu lógica actual)
     conn = get_connection()
     cursor = conn.cursor()
+
     cursor.execute("""
         SELECT porcentaje FROM copago
         WHERE id_seguro = ? AND id_especialidad = ?
         LIMIT 1
     """, (id_seguro, id_especialidad))
+
     row = cursor.fetchone()
     conn.close()
 
@@ -174,21 +190,20 @@ def rankear_opciones(id_seguro: int, id_especialidad: int) -> list:
         return []
 
     porcentaje = row["porcentaje"]
-    resultado = []
 
     for h in hospitales:
-        precio  = h["precio_base"]
-        copago  = round(precio * porcentaje / 100, 2)
-        cubre   = round(precio - copago, 2)
+        precio = h["precio_base"]
+        copago = round(precio * porcentaje / 100, 2)
+        cubre = round(precio - copago, 2)
+
         resultado.append({
             **h,
-            "porcentaje":      porcentaje,
+            "porcentaje": porcentaje,
             "copago_paciente": copago,
-            "cubre_seguro":    cubre,
+            "cubre_seguro": cubre,
         })
 
     return sorted(resultado, key=lambda x: x["copago_paciente"])
-
 # ── TOOL 6 (utilidad) ────────────────────────────────────────────────────────
 def guardar_log(id_cliente: int, id_especialidad: int,
                 id_hospital: int, copago: float, sintoma: str):
