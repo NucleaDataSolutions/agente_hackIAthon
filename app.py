@@ -12,7 +12,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# ── ESTILOS PRO ──────────────────────────────────────────────
+# ── ESTILOS ──────────────────────────────────────────────────
 st.markdown("""
 <style>
 .header {
@@ -22,29 +22,6 @@ st.markdown("""
     text-align: center;
     color: white;
     margin-bottom: 20px;
-}
-
-.card {
-    padding: 16px;
-    border-radius: 10px;
-    margin-bottom: 12px;
-}
-
-.best { background-color: #e8f8f0; border-left: 6px solid #27ae60; }
-.mid { background-color: #fff8e6; border-left: 6px solid #f1c40f; }
-.worst { background-color: #fdecea; border-left: 6px solid #e74c3c; }
-
-.money {
-    color: #27ae60;
-    font-weight: bold;
-}
-
-.badge {
-    background-color: #27ae60;
-    color: white;
-    padding: 4px 8px;
-    border-radius: 6px;
-    font-size: 12px;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -61,8 +38,7 @@ st.markdown("""
 st.info("""
 👋 Primero necesito tu cédula para verificar tu seguro.
 
-📌 Ejemplo:
-"Mi cédula es 0932001001"
+📌 Ejemplo: "Mi cédula es 0932001001"
 
 Luego podrás indicarme tu síntoma y te diré:
 - Especialidad médica
@@ -83,10 +59,9 @@ if not st.session_state.mensajes:
         "content": "👋 Hola, por favor indícame tu número de cédula para comenzar."
     })
 
-# ── FUNCION VISUAL PRO ───────────────────────────────────────
+# ── FUNCIÓN RENDER ───────────────────────────────────────────
 def render_respuesta(respuesta):
 
-    # Si aún no hay resultado final → mostrar normal
     if "Hospitales disponibles" not in respuesta:
         st.markdown(respuesta)
         return
@@ -97,15 +72,13 @@ def render_respuesta(respuesta):
     seguro = ""
     hospitales = []
     recomendacion = ""
-    direcciones = {}
 
-    # ── PARSEO ─────────────────────────────
     for line in lines:
         if "Especialidad sugerida" in line:
             especialidad = line.split(":")[-1].strip()
-        elif "Saludsa" in line or "Salud" in line and "Seguro" not in line:
+        elif "Saludsa" in line or ("Salud" in line and "Seguro" not in line):
             seguro = line.strip().lstrip("- ").strip()
-        elif line.strip().startswith("1.") or line.strip().startswith("2.") or line.strip().startswith("3."):
+        elif line.strip().startswith(("1.", "2.", "3.")):
             hospitales.append(line.strip())
         elif "Recomendación" in line:
             recomendacion = line.split(":", 1)[-1].strip()
@@ -114,41 +87,29 @@ def render_respuesta(respuesta):
         st.markdown(respuesta)
         return
 
-    # ── EXTRAER COPAGOS ────────────────────
+    # Extraer copagos
     copagos = []
     for h in hospitales:
         match = re.search(r'\$(\d+[\.,]\d{2})', h)
-        if match:
-            copagos.append(float(match.group(1).replace(",", ".")))
-        else:
-            copagos.append(0)
+        copagos.append(float(match.group(1).replace(",", ".")) if match else 0)
 
     max_copago = max(copagos) if copagos else 0
 
-    # ── HEADER ─────────────────────────────
+    # Header especialidad
     st.markdown(f"""
-    <div style="
-        background: linear-gradient(135deg, #1a6fa8 0%, #2c97de 100%);
-        padding: 20px 24px;
-        border-radius: 14px;
-        margin-bottom: 20px;
-        color: white;
-    ">
-        <div style="font-size:13px; opacity:0.8; margin-bottom:4px;">Especialidad sugerida</div>
-        <div style="font-size:24px; font-weight:700;">🧠 {especialidad}</div>
-        <div style="margin-top:8px; font-size:13px; opacity:0.85;">
-            🛡️ Seguro activo: <strong>{seguro}</strong>
-        </div>
+    <div style="background:linear-gradient(135deg,#1a6fa8,#2c97de);padding:20px 24px;border-radius:14px;margin-bottom:20px;color:white;">
+        <div style="font-size:13px;opacity:0.8;margin-bottom:4px;">Especialidad sugerida</div>
+        <div style="font-size:24px;font-weight:700;">🧠 {especialidad}</div>
+        <div style="margin-top:8px;font-size:13px;opacity:0.85;">🛡️ Seguro activo: {seguro}</div>
     </div>
     """, unsafe_allow_html=True)
 
     st.markdown("#### 🏥 Hospitales disponibles")
 
-    # ── CONFIGS POR POSICIÓN ───────────────
     configs = [
-        ("🥇 Mejor opción",  "#f0fdf4", "#16a34a", "#dcfce7"),
-        ("👍 Alternativa",   "#fffbeb", "#d97706", "#fef3c7"),
-        ("💸 Más costoso",   "#fff1f2", "#e11d48", "#ffe4e6"),
+        ("🥇 Mejor opción", "#f0fdf4", "#16a34a", "#dcfce7"),
+        ("👍 Alternativa",  "#fffbeb", "#d97706", "#fef3c7"),
+        ("💸 Más costoso",  "#fff1f2", "#e11d48", "#ffe4e6"),
     ]
 
     for i, h in enumerate(hospitales):
@@ -166,68 +127,33 @@ def render_respuesta(respuesta):
 
         dir_match = re.search(r'(?:Seguro cubre:?\s*[\d.]+\s*)(.+)', h)
         detalle = dir_match.group(1).strip() if dir_match else ""
+        detalle_html = f"<div style='font-size:12px;color:#64748b;margin-bottom:8px;'>📍 {detalle}</div>" if detalle else ""
 
-        # Construir HTML sin condicionales dentro del f-string
-        detalle_html = f"<div style='font-size:12px; color:#64748b; margin-bottom:8px;'>📍 {detalle}</div>" if detalle else ""
+        ahorro_texto = f"💡 Ahorras ${ahorro:.2f} ({ahorro_pct:.0f}%) vs la opción más cara"
 
         card_html = f"""
-        <div style="
-            background: {bg};
-            border: 1px solid {badge_bg};
-            border-left: 5px solid {color_acento};
-            padding: 16px 20px;
-            border-radius: 12px;
-            margin-bottom: 12px;
-        ">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                <span style="
-                    background:{badge_bg};
-                    color:{color_acento};
-                    padding:3px 10px;
-                    border-radius:20px;
-                    font-size:12px;
-                    font-weight:600;
-                ">{titulo}</span>
-                <span style="font-size:22px; font-weight:800; color:{color_acento};">${copago:.2f}</span>
+        <div style="background:{bg};border:1px solid {badge_bg};border-left:5px solid {color_acento};padding:16px 20px;border-radius:12px;margin-bottom:12px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                <span style="background:{badge_bg};color:{color_acento};padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;">{titulo}</span>
+                <span style="font-size:22px;font-weight:800;color:{color_acento};">${copago:.2f}</span>
             </div>
-            <div style="font-size:16px; font-weight:700; color:#1e293b; margin-bottom:6px;">
-                🏥 {nombre}
-            </div>
+            <div style="font-size:16px;font-weight:700;color:#1e293b;margin-bottom:6px;">🏥 {nombre}</div>
             {detalle_html}
-            <div style="
-                display:flex; align-items:center; gap:6px;
-                background:white;
-                border-radius:8px;
-                padding:6px 10px;
-                margin-top:6px;
-                font-size:13px;
-                color:#475569;
-            ">
-                💡 Ahorras <strong style="color:{color_acento};">${ahorro:.2f}</strong> ({ahorro_pct:.0f}%) vs la opción más cara
-            </div>
+            <div style="background:white;border-radius:8px;padding:6px 10px;margin-top:6px;font-size:13px;color:#475569;">{ahorro_texto}</div>
         </div>
         """
         st.markdown(card_html, unsafe_allow_html=True)
 
-    # ── RECOMENDACIÓN FINAL ─────────────────
+    # Recomendación final
     if recomendacion:
         st.markdown(f"""
-        <div style="
-            background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
-            border: 1px solid #bae6fd;
-            border-left: 5px solid #0284c7;
-            border-radius: 12px;
-            padding: 16px 20px;
-            margin-top: 16px;
-        ">
-            <div style="font-size:14px; font-weight:700; color:#0284c7; margin-bottom:6px;">
-                🧾 Recomendación del agente
-            </div>
-            <div style="font-size:14px; color:#1e3a5f; line-height:1.6;">
-                {recomendacion}
-            </div>
+        <div style="background:linear-gradient(135deg,#f0f9ff,#e0f2fe);border:1px solid #bae6fd;border-left:5px solid #0284c7;border-radius:12px;padding:16px 20px;margin-top:16px;">
+            <div style="font-size:14px;font-weight:700;color:#0284c7;margin-bottom:6px;">🧾 Recomendación del agente</div>
+            <div style="font-size:14px;color:#1e3a5f;line-height:1.6;">{recomendacion}</div>
         </div>
         """, unsafe_allow_html=True)
+
+
 # ── CHAT ─────────────────────────────────────────────────────
 for msg in st.session_state.mensajes:
     with st.chat_message(msg["role"]):
@@ -248,7 +174,6 @@ if prompt := st.chat_input("Escribe aquí..."):
                     prompt,
                     st.session_state.historial
                 )
-                # Limpieza agresiva de formato feo de Claude
                 respuesta = (
                     respuesta
                     .replace("`", "")
