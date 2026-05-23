@@ -1,7 +1,7 @@
 # 🏥 Estimador Agéntico de Copago y Cobertura
 
 Agente conversacional que ayuda al paciente a entender su beneficio de seguro
-antes de atenderse. Desarrollado para el **hackIAthon - Viamatica 2025**.
+antes de atenderse. Desarrollado para el **hackIAthon - Viamatica 2026**.
 
 ## ¿Qué hace?
 
