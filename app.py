@@ -132,17 +132,17 @@ def render_respuesta(respuesta):
         ahorro_texto = f"💡 Ahorras ${ahorro:.2f} ({ahorro_pct:.0f}%) vs la opción más cara"
 
         card_html = f"""
-        <div style="background:{bg};border:1px solid {badge_bg};border-left:5px solid {color_acento};padding:16px 20px;border-radius:12px;margin-bottom:12px;">
+        <div style="background:{bg};border:1px solid {badge_bg};border-left:5px solid {color_acento};padding:16px 20px;border-radius:12px;margin-bottom:4px;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
                 <span style="background:{badge_bg};color:{color_acento};padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;">{titulo}</span>
                 <span style="font-size:22px;font-weight:800;color:{color_acento};">${copago:.2f}</span>
             </div>
             <div style="font-size:16px;font-weight:700;color:#1e293b;margin-bottom:6px;">🏥 {nombre}</div>
             {detalle_html}
-            <div style="background:white;border-radius:8px;padding:6px 10px;margin-top:6px;font-size:13px;color:#475569;">{ahorro_texto}</div>
         </div>
         """
         st.markdown(card_html, unsafe_allow_html=True)
+        st.caption(ahorro_texto)
 
     # Recomendación final
     if recomendacion:
