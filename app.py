@@ -86,6 +86,11 @@ if not st.session_state.mensajes:
 # ── FUNCION VISUAL PRO ───────────────────────────────────────
 def render_respuesta(respuesta):
 
+    # Si no hay datos de hospitales, solo mostrar texto
+    if "Hospital" not in respuesta or "$" not in respuesta:
+        st.markdown(respuesta)
+        return
+
     lines = respuesta.split("\n")
 
     especialidad = ""
@@ -97,7 +102,7 @@ def render_respuesta(respuesta):
             especialidad = line
         elif "seguro" in line.lower():
             seguro = line
-        elif "-" in line and "Copago" in line:
+        elif "-" in line and "$" in line:
             hospitales.append(line)
 
     if especialidad:
@@ -109,19 +114,19 @@ def render_respuesta(respuesta):
 
     copagos = []
     for h in hospitales:
-        match = re.search(r'\\$(\\d+\\.\\d{2})', h)
+        match = re.search(r'\$(\d+\.\d{2})', h)
         if match:
             copagos.append(float(match.group(1)))
 
     if not copagos:
-        st.warning("No se pudieron procesar los resultados.")
+        st.markdown(respuesta)
         return
 
     max_copago = max(copagos)
 
     for i, h in enumerate(hospitales):
 
-        match = re.search(r'\\$(\\d+\\.\\d{2})', h)
+        match = re.search(r'\$(\d+\.\d{2})', h)
         copago = float(match.group(1)) if match else 0
 
         ahorro = max_copago - copago
@@ -130,21 +135,18 @@ def render_respuesta(respuesta):
         if i == 0:
             clase = "best"
             titulo = "🥇 Mejor opción"
-            extra = f"""
-            <br><span class="badge">Ahorras {ahorro_pct:.0f}% (${ahorro:.2f})</span>
-            <br>✔ Es la opción más económica disponible.
-            """
+            extra = f"<br><span class='badge'>Ahorras {ahorro_pct:.0f}% (${ahorro:.2f})</span>"
         elif i == 1:
             clase = "mid"
             titulo = "👍 Alternativa"
-            extra = f"<br>Ahorro: {ahorro_pct:.0f}% vs la más cara."
+            extra = f"<br>Ahorro: {ahorro_pct:.0f}%"
         else:
             clase = "worst"
             titulo = "💸 Más costoso"
-            extra = "<br>❗ Mayor costo en la red."
+            extra = "<br>Mayor costo"
 
         h_html = re.sub(
-            r'\\$(\\d+\\.\\d{2})',
+            r'\$(\d+\.\d{2})',
             r'<span class="money">$\1</span>',
             h
         )
@@ -156,7 +158,6 @@ def render_respuesta(respuesta):
             {extra}
         </div>
         """, unsafe_allow_html=True)
-
 # ── CHAT ─────────────────────────────────────────────────────
 for msg in st.session_state.mensajes:
     with st.chat_message(msg["role"]):
