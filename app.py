@@ -86,32 +86,41 @@ if not st.session_state.mensajes:
 # ── FUNCION VISUAL PRO ───────────────────────────────────────
 def render_respuesta(respuesta):
 
-    # Si no hay datos de hospitales, solo mostrar texto
-    if "Hospital" not in respuesta or "$" not in respuesta:
+    # Si aún no hay resultado final → mostrar normal
+    if "Hospitales disponibles" not in respuesta:
         st.markdown(respuesta)
         return
+
+    import re
 
     lines = respuesta.split("\n")
 
     especialidad = ""
     seguro = ""
     hospitales = []
+    recomendacion = ""
 
+    # ── PARSEO ─────────────────────────────
     for line in lines:
         if "Especialidad sugerida" in line:
-            especialidad = line
-        elif "seguro" in line.lower():
-            seguro = line
-        elif "-" in line and "$" in line:
+            especialidad = line.split(":")[-1].strip()
+
+        elif "Seguro" in line:
+            seguro = line.replace("Seguro:", "").strip()
+
+        elif line.strip().startswith("1.") or line.strip().startswith("2.") or line.strip().startswith("3."):
             hospitales.append(line)
 
-    if especialidad:
-        st.markdown(f"### 🧠 {especialidad}")
-    if seguro:
-        st.markdown(f"### 🛡️ {seguro}")
+        elif "Recomendación" in line:
+            recomendacion = line.replace("Recomendación:", "").strip()
 
-    st.markdown("### 🏥 Opciones disponibles")
+    # ── HEADER ─────────────────────────────
+    st.markdown(f"## 🧠 {especialidad}")
+    st.markdown(f"🛡️ {seguro}")
 
+    st.markdown("---")
+
+    # ── EXTRAER COPAGOS ────────────────────
     copagos = []
     for h in hospitales:
         match = re.search(r'\$(\d+\.\d{2})', h)
@@ -124,7 +133,10 @@ def render_respuesta(respuesta):
 
     max_copago = max(copagos)
 
+    # ── CARDS ──────────────────────────────
     for i, h in enumerate(hospitales):
+
+        nombre = h.split("-")[0].split(".")[-1].strip()
 
         match = re.search(r'\$(\d+\.\d{2})', h)
         copago = float(match.group(1)) if match else 0
@@ -133,31 +145,37 @@ def render_respuesta(respuesta):
         ahorro_pct = (ahorro / max_copago) * 100 if max_copago else 0
 
         if i == 0:
-            clase = "best"
             titulo = "🥇 Mejor opción"
-            extra = f"<br><span class='badge'>Ahorras {ahorro_pct:.0f}% (${ahorro:.2f})</span>"
+            color = "#e8f8f0"
         elif i == 1:
-            clase = "mid"
             titulo = "👍 Alternativa"
-            extra = f"<br>Ahorro: {ahorro_pct:.0f}%"
+            color = "#fff8e6"
         else:
-            clase = "worst"
             titulo = "💸 Más costoso"
-            extra = "<br>Mayor costo"
-
-        h_html = re.sub(
-            r'\$(\d+\.\d{2})',
-            r'<span class="money">$\1</span>',
-            h
-        )
+            color = "#fdecea"
 
         st.markdown(f"""
-        <div class="card {clase}">
-            <strong>{titulo}</strong><br>
-            {h_html}
-            {extra}
+        <div style="
+            background:{color};
+            padding:15px;
+            border-radius:10px;
+            margin-bottom:12px;
+        ">
+            <strong>{titulo}</strong><br><br>
+
+            🏥 <strong>{nombre}</strong><br>
+
+            💰 Pagas: <span style="color:#27ae60;font-weight:bold;">${copago:.2f}</span><br>
+
+            💡 Ahorras: {ahorro_pct:.0f}% (${ahorro:.2f})<br>
         </div>
         """, unsafe_allow_html=True)
+
+    # ── RECOMENDACIÓN FINAL ─────────────────
+    if recomendacion:
+        st.markdown("### 🧾 Recomendación")
+        st.success(recomendacion)
+        
 # ── CHAT ─────────────────────────────────────────────────────
 for msg in st.session_state.mensajes:
     with st.chat_message(msg["role"]):
