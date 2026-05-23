@@ -157,20 +157,20 @@ def render_respuesta(respuesta):
 
         titulo, bg, color_acento, badge_bg = configs[i]
 
-        # Nombre del hospital
         nombre_match = re.match(r'\d+\.\s*([^-]+)', h)
         nombre = nombre_match.group(1).strip() if nombre_match else f"Hospital {i+1}"
 
-        # Copago
         copago = copagos[i] if i < len(copagos) else 0
         ahorro = max_copago - copago
         ahorro_pct = (ahorro / max_copago * 100) if max_copago else 0
 
-        # Dirección y teléfono
         dir_match = re.search(r'(?:Seguro cubre:?\s*[\d.]+\s*)(.+)', h)
         detalle = dir_match.group(1).strip() if dir_match else ""
 
-        st.markdown(f"""
+        # Construir HTML sin condicionales dentro del f-string
+        detalle_html = f"<div style='font-size:12px; color:#64748b; margin-bottom:8px;'>📍 {detalle}</div>" if detalle else ""
+
+        card_html = f"""
         <div style="
             background: {bg};
             border: 1px solid {badge_bg};
@@ -190,13 +190,10 @@ def render_respuesta(respuesta):
                 ">{titulo}</span>
                 <span style="font-size:22px; font-weight:800; color:{color_acento};">${copago:.2f}</span>
             </div>
-
             <div style="font-size:16px; font-weight:700; color:#1e293b; margin-bottom:6px;">
                 🏥 {nombre}
             </div>
-
-            {"<div style='font-size:12px; color:#64748b; margin-bottom:8px;'>📍 " + detalle + "</div>" if detalle else ""}
-
+            {detalle_html}
             <div style="
                 display:flex; align-items:center; gap:6px;
                 background:white;
@@ -209,7 +206,8 @@ def render_respuesta(respuesta):
                 💡 Ahorras <strong style="color:{color_acento};">${ahorro:.2f}</strong> ({ahorro_pct:.0f}%) vs la opción más cara
             </div>
         </div>
-        """, unsafe_allow_html=True)
+        """
+        st.markdown(card_html, unsafe_allow_html=True)
 
     # ── RECOMENDACIÓN FINAL ─────────────────
     if recomendacion:
