@@ -174,7 +174,21 @@ def render_respuesta(respuesta):
     # ── RECOMENDACIÓN FINAL ─────────────────
     if recomendacion:
         st.markdown("### 🧾 Recomendación")
-        st.success(recomendacion)
+        st.markdown(f"""
+<div style="
+    background: linear-gradient(90deg, #e8f8f0, #f4f6f7);
+    padding:18px;
+    border-radius:12px;
+    border:1px solid #d5f5e3;
+">
+    <div style="font-size:16px;font-weight:bold;color:#1e8449;">
+        💡 Recomendación inteligente
+    </div>
+    <div style="margin-top:8px;">
+        {recomendacion}
+    </div>
+</div>
+""", unsafe_allow_html=True)
         
 # ── CHAT ─────────────────────────────────────────────────────
 for msg in st.session_state.mensajes:
