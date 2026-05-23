@@ -196,7 +196,13 @@ if prompt := st.chat_input("Escribe aquí..."):
                     prompt,
                     st.session_state.historial
                 )
-                respuesta = respuesta.replace("`", "")
+                # Limpieza agresiva de formato feo de Claude
+                respuesta = (
+                    respuesta
+                    .replace("`", "")
+                    .replace("**", "")
+                    .replace("*", "")
+                )
 
                 render_respuesta(respuesta)
 
