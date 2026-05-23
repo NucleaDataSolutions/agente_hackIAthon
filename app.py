@@ -91,105 +91,145 @@ def render_respuesta(respuesta):
         st.markdown(respuesta)
         return
 
-    import re
-
     lines = respuesta.split("\n")
 
     especialidad = ""
     seguro = ""
     hospitales = []
     recomendacion = ""
+    direcciones = {}
 
     # ── PARSEO ─────────────────────────────
     for line in lines:
         if "Especialidad sugerida" in line:
             especialidad = line.split(":")[-1].strip()
-
-        elif "Seguro" in line:
-            seguro = line.replace("Seguro:", "").strip()
-
+        elif "Saludsa" in line or "Salud" in line and "Seguro" not in line:
+            seguro = line.strip().lstrip("- ").strip()
         elif line.strip().startswith("1.") or line.strip().startswith("2.") or line.strip().startswith("3."):
-            hospitales.append(line)
-
+            hospitales.append(line.strip())
         elif "Recomendación" in line:
-            recomendacion = line.replace("Recomendación:", "").strip()
+            recomendacion = line.split(":", 1)[-1].strip()
 
-    # ── HEADER ─────────────────────────────
-    st.markdown(f"## 🧠 {especialidad}")
-    st.markdown(f"🛡️ {seguro}")
-
-    st.markdown("---")
+    if not hospitales:
+        st.markdown(respuesta)
+        return
 
     # ── EXTRAER COPAGOS ────────────────────
     copagos = []
     for h in hospitales:
-        match = re.search(r'\$(\d+\.\d{2})', h)
+        match = re.search(r'\$(\d+[\.,]\d{2})', h)
         if match:
-            copagos.append(float(match.group(1)))
-
-    if not copagos:
-        st.markdown(respuesta)
-        return
-
-    max_copago = max(copagos)
-
-    # ── CARDS ──────────────────────────────
-    for i, h in enumerate(hospitales):
-
-        nombre = h.split("-")[0].split(".")[-1].strip()
-
-        match = re.search(r'\$(\d+\.\d{2})', h)
-        copago = float(match.group(1)) if match else 0
-
-        ahorro = max_copago - copago
-        ahorro_pct = (ahorro / max_copago) * 100 if max_copago else 0
-
-        if i == 0:
-            titulo = "🥇 Mejor opción"
-            color = "#e8f8f0"
-        elif i == 1:
-            titulo = "👍 Alternativa"
-            color = "#fff8e6"
+            copagos.append(float(match.group(1).replace(",", ".")))
         else:
-            titulo = "💸 Más costoso"
-            color = "#fdecea"
+            copagos.append(0)
+
+    max_copago = max(copagos) if copagos else 0
+
+    # ── HEADER ─────────────────────────────
+    st.markdown(f"""
+    <div style="
+        background: linear-gradient(135deg, #1a6fa8 0%, #2c97de 100%);
+        padding: 20px 24px;
+        border-radius: 14px;
+        margin-bottom: 20px;
+        color: white;
+    ">
+        <div style="font-size:13px; opacity:0.8; margin-bottom:4px;">Especialidad sugerida</div>
+        <div style="font-size:24px; font-weight:700;">🧠 {especialidad}</div>
+        <div style="margin-top:8px; font-size:13px; opacity:0.85;">
+            🛡️ Seguro activo: <strong>{seguro}</strong>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("#### 🏥 Hospitales disponibles")
+
+    # ── CONFIGS POR POSICIÓN ───────────────
+    configs = [
+        ("🥇 Mejor opción",  "#f0fdf4", "#16a34a", "#dcfce7"),
+        ("👍 Alternativa",   "#fffbeb", "#d97706", "#fef3c7"),
+        ("💸 Más costoso",   "#fff1f2", "#e11d48", "#ffe4e6"),
+    ]
+
+    for i, h in enumerate(hospitales):
+        if i >= len(configs):
+            break
+
+        titulo, bg, color_acento, badge_bg = configs[i]
+
+        # Nombre del hospital
+        nombre_match = re.match(r'\d+\.\s*([^-]+)', h)
+        nombre = nombre_match.group(1).strip() if nombre_match else f"Hospital {i+1}"
+
+        # Copago
+        copago = copagos[i] if i < len(copagos) else 0
+        ahorro = max_copago - copago
+        ahorro_pct = (ahorro / max_copago * 100) if max_copago else 0
+
+        # Dirección y teléfono
+        dir_match = re.search(r'(?:Seguro cubre:?\s*[\d.]+\s*)(.+)', h)
+        detalle = dir_match.group(1).strip() if dir_match else ""
 
         st.markdown(f"""
         <div style="
-            background:{color};
-            padding:15px;
-            border-radius:10px;
-            margin-bottom:12px;
+            background: {bg};
+            border: 1px solid {badge_bg};
+            border-left: 5px solid {color_acento};
+            padding: 16px 20px;
+            border-radius: 12px;
+            margin-bottom: 12px;
         ">
-            <strong>{titulo}</strong><br><br>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <span style="
+                    background:{badge_bg};
+                    color:{color_acento};
+                    padding:3px 10px;
+                    border-radius:20px;
+                    font-size:12px;
+                    font-weight:600;
+                ">{titulo}</span>
+                <span style="font-size:22px; font-weight:800; color:{color_acento};">${copago:.2f}</span>
+            </div>
 
-            🏥 <strong>{nombre}</strong><br>
+            <div style="font-size:16px; font-weight:700; color:#1e293b; margin-bottom:6px;">
+                🏥 {nombre}
+            </div>
 
-            💰 Pagas: <span style="color:#27ae60;font-weight:bold;">${copago:.2f}</span><br>
+            {"<div style='font-size:12px; color:#64748b; margin-bottom:8px;'>📍 " + detalle + "</div>" if detalle else ""}
 
-            💡 Ahorras: {ahorro_pct:.0f}% (${ahorro:.2f})<br>
+            <div style="
+                display:flex; align-items:center; gap:6px;
+                background:white;
+                border-radius:8px;
+                padding:6px 10px;
+                margin-top:6px;
+                font-size:13px;
+                color:#475569;
+            ">
+                💡 Ahorras <strong style="color:{color_acento};">${ahorro:.2f}</strong> ({ahorro_pct:.0f}%) vs la opción más cara
+            </div>
         </div>
         """, unsafe_allow_html=True)
 
     # ── RECOMENDACIÓN FINAL ─────────────────
     if recomendacion:
-        st.markdown("### 🧾 Recomendación")
         st.markdown(f"""
-<div style="
-    background: linear-gradient(90deg, #e8f8f0, #f4f6f7);
-    padding:18px;
-    border-radius:12px;
-    border:1px solid #d5f5e3;
-">
-    <div style="font-size:16px;font-weight:bold;color:#1e8449;">
-        💡 Recomendación inteligente
-    </div>
-    <div style="margin-top:8px;">
-        {recomendacion}
-    </div>
-</div>
-""", unsafe_allow_html=True)
-        
+        <div style="
+            background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+            border: 1px solid #bae6fd;
+            border-left: 5px solid #0284c7;
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-top: 16px;
+        ">
+            <div style="font-size:14px; font-weight:700; color:#0284c7; margin-bottom:6px;">
+                🧾 Recomendación del agente
+            </div>
+            <div style="font-size:14px; color:#1e3a5f; line-height:1.6;">
+                {recomendacion}
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 # ── CHAT ─────────────────────────────────────────────────────
 for msg in st.session_state.mensajes:
     with st.chat_message(msg["role"]):
