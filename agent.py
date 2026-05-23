@@ -56,6 +56,7 @@ REGLAS:
 - Siempre usa $
 - Responde en español
 - Máximo 1 pregunta de aclaración
+- Nunca uses asteriscos ** para formato, formato limpio solo con el signo que debé ser del número
 """
 
 TOOLS = [
